@@ -51,21 +51,21 @@ with ui.sidebar(open='open'):
 # Data Table and Data Grid
 with ui.card():
         with ui.layout_columns():
-            with ui.value_box(showcase= icon_svg('feather'), max_height="300px"):
+            with ui.value_box(showcase= icon_svg('feather'), max_height="300px", theme="bg-gradient-blue-green"):
                 "Total Penguins Filtered"
                 @render.text
                 def display_penguin_count():
                     df = filtered_data()
                     return f"{len(df)} penguins"
 
-            with ui.value_box(showcase=icon_svg("ruler-horizontal"), max_height="300px", theme="bg-gradient-green"):
+            with ui.value_box(showcase=icon_svg("ruler-horizontal"), max_height="300px", theme="bg-gradient-blue-green"):
                 "Average Bill Length"
                 @render.text
                 def average_bill_length():
                     df = filtered_data()
                     return f"{df['bill_length_mm'].mean():.2f} mm" if not df.empty else "N/A"
 
-            with ui.value_box(showcase=icon_svg("ruler-vertical"), max_height="300px", theme="bg-gradient-orange"):
+            with ui.value_box(showcase=icon_svg("ruler-vertical"), max_height="300px", theme="bg-gradient-blue-green"):
                 "Average Bill Depth"
                 @render.text
                 def average_bill_depth():
