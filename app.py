@@ -1,59 +1,130 @@
-# --------------------------------------------
-# Imports at the top - PyShiny EXPRESS VERSION
-# --------------------------------------------
-
-# From shiny, import just reactive and render
+import plotly.express as px
+import seaborn as sns
+from shiny.express import input, ui
+from shiny import render
+from shinywidgets import render_plotly
+import palmerpenguins
+from shiny import reactive, render, req
+import shinyswatch
+from palmerpenguins import load_penguins
+import seaborn as sns
 from shiny import reactive, render
+from faicons import icon_svg
+import json
+import pathlib
+from ipyleaflet import Map, Marker
+# Theme
+shinyswatch.theme.sketchy()
 
-# From shiny.express, import just ui and inputs if needed
-from shiny.express import ui
+# Built-in function to load the penguin dataset
+penguins_df = palmerpenguins.load_penguins()
 
-# --------------------------------------------
-# Import icons as you like
-# --------------------------------------------
+# Title for chart
+ui.page_opts(title="Wild Penguin Data 🐧", fillable=True,)
 
-# Theme of Shiny
-shinyswatch.theme.darkly()
+# Add a Shiny UI sidebar for user interaction
+with ui.sidebar(open='open'):
+        ui.h1("Penguin Data Options")
+        with ui.accordion():
+            with ui.accordion_panel("Penguin Specs Selection"):
+                ui.input_selectize("selected_attribute", "Select an attribute:", 
+                          ["bill_length_mm", "bill_depth_mm", "flipper_length_mm", "body_mass_g"])
+            with ui.accordion_panel("Histogram"):
+                ui.input_numeric("plotly_bin_count", "Plotly Histogram Bins:", value=20, min=1, max=100)
+            with ui.accordion_panel("Seaborn Bins Slider"):
+                ui.input_slider("seaborn_bin_count", "# of Seaborn Bins:", min=1, max=50, value=10)
+            with ui.accordion_panel("Species Filter"):
+                ui.input_checkbox_group("selected_species_list", "Filter by Species:", 
+                                choices=["Adelie", "Gentoo", "Chinstrap"], 
+                                selected=["Adelie", "Gentoo", "Chinstrap"], inline=True)
+            with ui.accordion_panel("Island Filter"):
+                ui.input_checkbox_group("selected_island_list", "Filter by Island:", 
+                                choices=["Torgersen", "Biscoe", "Dream"], 
+                                selected=["Torgersen", "Biscoe", "Dream"], inline=True)
+            with ui.accordion_panel("Bill Length Filter"):
+                ui.input_slider("bill_length_mm", "Length (mm)", 30, 60, 60)
 
-# --------------------------------------------
-# Shiny EXPRESS VERSION
-# --------------------------------------------
+    
+# Data Content
 
-# --------------------------------------------
-# First, set a constant UPDATE INTERVAL for all live data
-# Constants are usually defined in uppercase letters
-# Use a type hint to make it clear that it's an integer (: int)
-# --------------------------------------------
+# Data Table and Data Grid
+with ui.card():
+        with ui.layout_columns():
+            with ui.value_box(showcase=icon_svg("feather"), max_height="300px"):
+                "Total Penguins Filtered"
+                @render.text
+                def display_penguin_count():
+                    df = filtered_data()
+                    return f"{len(df)} penguins"
 
-# --------------------------------------------
-# Initialize a REACTIVE VALUE with a common data structure
-# The reactive value is used to store state (information)
-# Used by all the display components that show this live data.
-# This reactive value is a wrapper around a DEQUE of readings
-# --------------------------------------------
+with ui.layout_columns():
+    with ui.accordion(id="acc",open="closed"):
+        with ui.accordion_panel("Data Table"):
+            @render.data_frame
+            def penguin_datatable():
+                return render.DataTable(filtered_data())
 
-# --------------------------------------------
-# Initialize a REACTIVE CALC that all display components can call
-# to get the latest data and display it.
-# The calculation is invalidated every UPDATE_INTERVAL_SECS
-# to trigger updates.
-# It returns a tuple with everything needed to display the data.
-# Very easy to expand or modify.
-# --------------------------------------------
+        with ui.accordion_panel("Data Grid"):
+            @render.data_frame
+            def penguin_datagrid():
+                return render.DataGrid(filtered_data())
 
-# Define the Shiny UI Page layout
-# Call the ui.page_opts() function
-# Set title to a string in quotes that will appear at the top
-# Set fillable to True to use the whole page width for the UI
+# Display Plotly histogram
+with ui.navset_card_tab(id="tab"):
+    with ui.nav_panel("Plotly Histogram"):
 
-# Sidebar is typically used for user interaction/information
-# Note the with statement to create the sidebar followed by a colon
-# Everything in the sidebar is indented consistently
+        @render_plotly
+        def plotly_histogram():
+            plotly_hist = px.histogram(
+                data_frame=filtered_data(),
+                x=input.selected_attribute(),
+                nbins=input.plotly_bin_count(),
+                color="species",
+            ).update_layout(
+                title="Plotly Penguins Data",
+                xaxis_title="Selected Attribute",
+                yaxis_title="Count",
+            )
+            
+            return plotly_hist
 
-# In Shiny Express, everything not in the sidebar is in the main panel
+# Display Seaborn histogram    
+    with ui.nav_panel("Seaborn Histogram"):
+        @render.plot
+        def seaborn_histogram():
+            histplot = sns.histplot(data=filtered_data(), x="body_mass_g", bins=input.seaborn_bin_count())
+            histplot.set_title("Palmer Penguins")
+            histplot.set_xlabel("Mass")
+            histplot.set_ylabel("Count")
+            sns.set_style('darkgrid')
+            return histplot
 
-# Linear regression - we need to get a list of the
-            # Independent variable x values (time) and the
-            # Dependent variable y values (temp)
-            # then, it's pretty easy using scipy.stats.linregress()
+# Display Plotly Scatterplot
+    with ui.nav_panel("Plotly Scatterplot"):
+        ui.card_header("Plotly Scatterplot: Species")
 
+        @render_plotly
+        def plotly_scatterplot():
+            return px.scatter(
+                filtered_data(),
+                x="body_mass_g",
+                y="bill_length_mm",
+                color="species",
+                 color_discrete_map={
+                     'Adelie': 'blue',
+                     'Chinstrap': 'green',
+                     'Gentoo': 'red'},
+            )
+
+# --------------------------------------------------------
+# Reactive calculations and effects
+# --------------------------------------------------------
+
+# Add a reactive calculation to filter the data
+# By decorating the function with @reactive, we can use the function to filter the data
+# The function will be called whenever an input functions used to generate that output changes.
+# Any output that depends on the reactive function (e.g., filtered_data()) will be updated when the data changes.
+
+@reactive.calc
+def filtered_data():
+    return penguins_df[penguins_df["species"].isin(input.selected_species_list())]
