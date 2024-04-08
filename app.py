@@ -2,7 +2,7 @@ import plotly.express as px
 import seaborn as sns
 from shiny.express import input, ui
 from shiny import render
-from shinywidgets import render_plotly
+from shinywidgets import render_plotly, render_widget
 import palmerpenguins
 from shiny import reactive, render, req
 import shinyswatch
@@ -14,48 +14,63 @@ import json
 import pathlib
 from ipyleaflet import Map, Marker
 # Theme
-shinyswatch.theme.sketchy()
+shinyswatch.theme.darkly()
 
 # Built-in function to load the penguin dataset
 penguins_df = palmerpenguins.load_penguins()
 
 # Title for chart
-ui.page_opts(title="Wild Penguin Data 🐧", fillable=True,)
+ui.page_opts(title="WILD PENGUIN DATA", fillable=True,)
 
 # Add a Shiny UI sidebar for user interaction
 with ui.sidebar(open='open'):
-        ui.h1("Penguin Data Options")
+        
+        ui.h1("Penguin Data Options 🏝️")
         with ui.accordion():
-            with ui.accordion_panel("Penguin Specs Selection"):
+            with ui.accordion_panel("🐧 Penguin Specs Selection"):
                 ui.input_selectize("selected_attribute", "Select an attribute:", 
                           ["bill_length_mm", "bill_depth_mm", "flipper_length_mm", "body_mass_g"])
-            with ui.accordion_panel("Histogram"):
+            with ui.accordion_panel("📊 Histogram"):
                 ui.input_numeric("plotly_bin_count", "Plotly Histogram Bins:", value=20, min=1, max=100)
-            with ui.accordion_panel("Seaborn Bins Slider"):
+            with ui.accordion_panel("📈 Seaborn Bins Slider"):
                 ui.input_slider("seaborn_bin_count", "# of Seaborn Bins:", min=1, max=50, value=10)
-            with ui.accordion_panel("Species Filter"):
+            with ui.accordion_panel("🧬 Species Filter"):
                 ui.input_checkbox_group("selected_species_list", "Filter by Species:", 
                                 choices=["Adelie", "Gentoo", "Chinstrap"], 
                                 selected=["Adelie", "Gentoo", "Chinstrap"], inline=True)
-            with ui.accordion_panel("Island Filter"):
+            with ui.accordion_panel("🏔️ Island Filter"):
                 ui.input_checkbox_group("selected_island_list", "Filter by Island:", 
                                 choices=["Torgersen", "Biscoe", "Dream"], 
                                 selected=["Torgersen", "Biscoe", "Dream"], inline=True)
-            with ui.accordion_panel("Bill Length Filter"):
+            with ui.accordion_panel("📏 Bill Length Filter"):
                 ui.input_slider("bill_length_mm", "Length (mm)", 30, 60, 60)
 
-    
+
 # Data Content
 
 # Data Table and Data Grid
 with ui.card():
         with ui.layout_columns():
-            with ui.value_box(showcase=icon_svg("feather"), max_height="300px"):
+            with ui.value_box(showcase= icon_svg('feather'), max_height="300px"):
                 "Total Penguins Filtered"
                 @render.text
                 def display_penguin_count():
                     df = filtered_data()
                     return f"{len(df)} penguins"
+
+            with ui.value_box(showcase=icon_svg("ruler-horizontal"), max_height="300px", theme="bg-gradient-green"):
+                "Average Bill Length"
+                @render.text
+                def average_bill_length():
+                    df = filtered_data()
+                    return f"{df['bill_length_mm'].mean():.2f} mm" if not df.empty else "N/A"
+
+            with ui.value_box(showcase=icon_svg("ruler-vertical"), max_height="300px", theme="bg-gradient-orange"):
+                "Average Bill Depth"
+                @render.text
+                def average_bill_depth():
+                    df = filtered_data()
+                    return f"{df['bill_depth_mm'].mean():.2f} mm" if not df.empty else "N/A"
 
 with ui.layout_columns():
     with ui.accordion(id="acc",open="closed"):
@@ -115,16 +130,15 @@ with ui.navset_card_tab(id="tab"):
                      'Chinstrap': 'green',
                      'Gentoo': 'red'},
             )
+# Display Map
+    with ui.nav_panel("Map"):
+        ui.card_header("Island Map")
 
-# --------------------------------------------------------
-# Reactive calculations and effects
-# --------------------------------------------------------
+        @render_widget
+        def Island_map(width="100%", height="100px"):
+            return Map(center=(-67.7675, -59.8467), zoom=4,)
 
-# Add a reactive calculation to filter the data
-# By decorating the function with @reactive, we can use the function to filter the data
-# The function will be called whenever an input functions used to generate that output changes.
-# Any output that depends on the reactive function (e.g., filtered_data()) will be updated when the data changes.
-
+@reactive.calc
 @reactive.calc
 def filtered_data():
     return penguins_df[penguins_df["species"].isin(input.selected_species_list())]
