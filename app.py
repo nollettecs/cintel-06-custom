@@ -10,7 +10,6 @@ from palmerpenguins import load_penguins
 import seaborn as sns
 from shiny import reactive, render
 from faicons import icon_svg
-import json
 import pathlib
 from ipyleaflet import Map, Marker
 # Theme
