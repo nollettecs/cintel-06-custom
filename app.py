@@ -136,7 +136,7 @@ with ui.navset_card_tab(id="tab"):
 
         @render_widget
         def Island_map(width="100%", height="100px"):
-            return Map(center=(-64.1675, -62.8467), zoom=7,)
+            return Map(center=(-64.1675, -62.8467), zoom=7, Marker=(-64.1, -62.8))
 
 @reactive.calc
 @reactive.calc
